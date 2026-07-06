@@ -120,7 +120,7 @@ export const qboFetch = async (
   path: string,
   options: QboFetchOptions = {},
 ) => {
-  const baseUrl = `https://quickbooks.api.intuit.com/v3/company/${realmId}`
+  const baseUrl = `${process.env.QBO_BASE_URL || 'https://sandbox-quickbooks.api.intuit.com/v3/company'}/${realmId}`
   const url = `${baseUrl}${path}`
 
   const headers: Record<string, string> = {

@@ -32,6 +32,10 @@ export class QboServiceStack extends cdk.Stack {
       this,
       `/${stageName}/datamgmt/user-pool-client-id`,
     )
+    const machineClientId = ssm.StringParameter.valueForStringParameter(
+      this,
+      `/${stageName}/datamgmt/machine-client-id`,
+    )
 
     // Import Intuit credentials from SSM
     const intuitClientId = ssm.StringParameter.valueForStringParameter(
@@ -74,6 +78,7 @@ export class QboServiceStack extends cdk.Stack {
       INTUIT_CLIENT_SECRET: intuitClientSecret,
       QBO_REDIRECT_URI: qboRedirectUri,
       REALM_ID: realmId,
+      QBO_BASE_URL: stage.qboBaseUrl || 'https://sandbox-quickbooks.api.intuit.com/v3/company',
     }
 
     // Shared Lambda props
@@ -133,7 +138,7 @@ export class QboServiceStack extends cdk.Stack {
     // JWT Authorizer (reuses shared Cognito pool)
     const issuer = `https://cognito-idp.${this.region}.amazonaws.com/${userPoolId}`
     const jwtAuthorizer = new apigwv2Authorizers.HttpJwtAuthorizer('JwtAuthorizer', issuer, {
-      jwtAudience: [userPoolClientId],
+      jwtAudience: [userPoolClientId, machineClientId],
     })
 
     // Integrations

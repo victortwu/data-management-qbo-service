@@ -1,5 +1,6 @@
 export interface StageConfig {
   stageName: string
+  qboBaseUrl?: string
   env?: { account: string; region: string }
 }
 
