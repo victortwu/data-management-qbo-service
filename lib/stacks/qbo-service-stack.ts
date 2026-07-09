@@ -182,7 +182,7 @@ export class QboServiceStack extends cdk.Stack {
     // Purchases routes (JWT protected)
     httpApi.addRoutes({
       path: '/purchases',
-      methods: [apigwv2.HttpMethod.POST],
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
       integration: purchasesIntegration,
       authorizer: jwtAuthorizer,
     })
@@ -192,11 +192,17 @@ export class QboServiceStack extends cdk.Stack {
       integration: purchasesIntegration,
       authorizer: jwtAuthorizer,
     })
+    httpApi.addRoutes({
+      path: '/purchases/{purchaseId}/attachments',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: purchasesIntegration,
+      authorizer: jwtAuthorizer,
+    })
 
-    // Vendors route (JWT protected)
+    // Vendors routes (JWT protected)
     httpApi.addRoutes({
       path: '/vendors',
-      methods: [apigwv2.HttpMethod.GET],
+      methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST],
       integration: vendorsIntegration,
       authorizer: jwtAuthorizer,
     })
