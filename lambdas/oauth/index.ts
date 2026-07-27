@@ -24,12 +24,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (method === 'GET' && rawPath.includes('/callback')) {
       const code = queryStringParameters?.code
       const realmId = queryStringParameters?.realmId
+      const state = queryStringParameters?.state
 
       if (!code) {
         return respond(400, { error: 'Missing authorization code' })
       }
 
-      return handleCallback(code, realmId)
+      return handleCallback(code, realmId, state)
     }
 
     // POST /auth/refresh

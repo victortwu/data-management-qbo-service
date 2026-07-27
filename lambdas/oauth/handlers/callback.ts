@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, PutCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import {
   TOKEN_TABLE,
   INTUIT_CLIENT_ID,
@@ -12,7 +12,38 @@ import { IntuitTokenResponse, OAuthTokens } from '../types'
 const client = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(client)
 
-export const handleCallback = async (code: string, realmId?: string) => {
+export const handleCallback = async (code: string, realmId?: string, state?: string) => {
+  // CSRF validation: verify state parameter matches what we stored
+  if (!state) {
+    return {
+      statusCode: 302,
+      headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error&reason=missing_state` },
+      body: '',
+    }
+  }
+
+  const stateResult = await ddb.send(
+    new GetCommand({
+      TableName: TOKEN_TABLE,
+      Key: { pk: `OAUTH_STATE#${state}` },
+    }),
+  )
+
+  if (!stateResult.Item) {
+    return {
+      statusCode: 302,
+      headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error&reason=invalid_state` },
+      body: '',
+    }
+  }
+
+  // Delete used state (one-time use)
+  await ddb.send(
+    new DeleteCommand({
+      TableName: TOKEN_TABLE,
+      Key: { pk: `OAUTH_STATE#${state}` },
+    }),
+  )
   const credentials = Buffer.from(`${INTUIT_CLIENT_ID}:${INTUIT_CLIENT_SECRET}`).toString('base64')
 
   const response = await fetch(INTUIT_TOKEN_URL, {
@@ -33,9 +64,9 @@ export const handleCallback = async (code: string, realmId?: string) => {
     const error = await response.text()
     console.error('Token exchange failed:', error)
     return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'text/html' },
-      body: '<html><body><h1>Connection Failed</h1><p>Unable to connect to QuickBooks. Please try again.</p></body></html>',
+      statusCode: 302,
+      headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error` },
+      body: '',
     }
   }
 
@@ -65,8 +96,8 @@ export const handleCallback = async (code: string, realmId?: string) => {
   )
 
   return {
-    statusCode: 200,
-    headers: { 'Content-Type': 'text/html' },
-    body: '<html><body><h1>Connected to QuickBooks!</h1><p>You can close this window.</p></body></html>',
+    statusCode: 302,
+    headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=success` },
+    body: '',
   }
 }
