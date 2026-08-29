@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { handleConnect } from './handlers/connect'
 import { handleCallback } from './handlers/callback'
+import { handleDisconnect } from './handlers/disconnect'
 import { getValidAccessToken } from '../shared/utils/qboClient'
 import { respond } from '../shared/utils/respond'
 import { TOKEN_TABLE } from './constants'
@@ -40,6 +41,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         message: 'Token refreshed successfully',
         hasValidToken: !!accessToken,
       })
+    }
+
+    // GET /auth/disconnect
+    if (method === 'GET' && rawPath.includes('/disconnect')) {
+      return handleDisconnect()
     }
 
     return respond(404, { error: 'Route not found' })

@@ -170,6 +170,11 @@ export class QboServiceStack extends cdk.Stack {
       methods: [apigwv2.HttpMethod.GET],
       integration: oauthIntegration,
     })
+    httpApi.addRoutes({
+      path: '/auth/disconnect',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: oauthIntegration,
+    })
 
     // Auth refresh (JWT protected)
     httpApi.addRoutes({

@@ -71,6 +71,7 @@ describe('QboServiceStack', () => {
 
     expect(routeKeys).toContain('GET /auth/connect')
     expect(routeKeys).toContain('GET /auth/callback')
+    expect(routeKeys).toContain('GET /auth/disconnect')
   })
 
   test('creates API routes for protected endpoints', () => {
@@ -92,7 +93,11 @@ describe('QboServiceStack', () => {
 
     for (const [, route] of Object.entries(routes)) {
       const props = (route as { Properties: Record<string, unknown> }).Properties
-      if (props.RouteKey === 'GET /auth/connect' || props.RouteKey === 'GET /auth/callback') {
+      if (
+        props.RouteKey === 'GET /auth/connect' ||
+        props.RouteKey === 'GET /auth/callback' ||
+        props.RouteKey === 'GET /auth/disconnect'
+      ) {
         expect(props.AuthorizationType).toBe('NONE')
       }
     }
