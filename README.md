@@ -24,14 +24,23 @@ Generic QuickBooks Online API wrapper service. Provides authenticated access to 
 
 ## Prerequisites
 
-Before deploying, set these SSM parameters:
+Before deploying, set these SSM parameters and the Secrets Manager secret:
 
 ```bash
 # Intuit app credentials (from Intuit Developer Portal)
 aws ssm put-parameter --name "/Beta/datamgmt-qbo/intuit-client-id" --value "YOUR_CLIENT_ID" --type String
-aws ssm put-parameter --name "/Beta/datamgmt-qbo/intuit-client-secret" --value "YOUR_CLIENT_SECRET" --type String
 aws ssm put-parameter --name "/Beta/datamgmt-qbo/redirect-uri" --value "https://YOUR_API_URL/auth/callback" --type String
 aws ssm put-parameter --name "/Beta/datamgmt-qbo/realm-id" --value "YOUR_REALM_ID" --type String
+
+# Intuit client secret lives in AWS Secrets Manager (KMS-encrypted, read at
+# runtime by ARN — never baked into the Lambda env). The secret NAME must match
+# what the stack references: "{Stage}/datamgmt-qbo/intuit-client-secret".
+aws secretsmanager create-secret \
+  --name "Beta/datamgmt-qbo/intuit-client-secret" \
+  --secret-string "YOUR_CLIENT_SECRET"
+# To rotate/update the value later:
+# aws secretsmanager put-secret-value \
+#   --secret-id "Beta/datamgmt-qbo/intuit-client-secret" --secret-string "NEW_VALUE"
 
 # These must already exist from DataMgmt core deployment:
 # /Beta/datamgmt/user-pool-id

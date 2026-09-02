@@ -3,6 +3,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as kms from 'aws-cdk-lib/aws-kms'
 import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as ssm from 'aws-cdk-lib/aws-ssm'
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apigwv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import * as apigwv2Authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
@@ -42,9 +43,12 @@ export class QboServiceStack extends cdk.Stack {
       this,
       `/${stageName}/datamgmt-qbo/intuit-client-id`,
     )
-    const intuitClientSecret = ssm.StringParameter.valueForStringParameter(
+    // Intuit client secret lives in AWS Secrets Manager (KMS-encrypted), read at
+    // runtime via its ARN — never baked into the Lambda environment.
+    const intuitClientSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
-      `/${stageName}/datamgmt-qbo/intuit-client-secret`,
+      'IntuitClientSecret',
+      `${stageName}/datamgmt-qbo/intuit-client-secret`,
     )
     const qboRedirectUri = ssm.StringParameter.valueForStringParameter(
       this,
@@ -75,7 +79,7 @@ export class QboServiceStack extends cdk.Stack {
     const lambdaEnvironment = {
       TOKEN_TABLE: tokenTable.tableName,
       INTUIT_CLIENT_ID: intuitClientId,
-      INTUIT_CLIENT_SECRET: intuitClientSecret,
+      INTUIT_CLIENT_SECRET_ARN: intuitClientSecret.secretArn,
       QBO_REDIRECT_URI: qboRedirectUri,
       REALM_ID: realmId,
       QBO_BASE_URL: stage.qboBaseUrl || 'https://sandbox-quickbooks.api.intuit.com/v3/company',
@@ -123,6 +127,7 @@ export class QboServiceStack extends cdk.Stack {
       tokenTable.grantReadWriteData(fn)
       key.grantDecrypt(fn)
       key.grantEncrypt(fn)
+      intuitClientSecret.grantRead(fn)
     }
 
     // API Gateway

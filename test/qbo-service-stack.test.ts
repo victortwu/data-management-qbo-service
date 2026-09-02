@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib'
-import { Template } from 'aws-cdk-lib/assertions'
+import { Template, Match } from 'aws-cdk-lib/assertions'
 import { QboServiceStack } from '../lib/stacks/qbo-service-stack'
 
 const createStack = () => {
@@ -106,6 +106,40 @@ describe('QboServiceStack', () => {
   test('writes SSM parameter for API URL', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/Beta/datamgmt-qbo/api-url',
+    })
+  })
+
+  test('passes Intuit client secret ARN (not value) to Lambda env', () => {
+    const lambdas = template.findResources('AWS::Lambda::Function')
+    const hasSecretArnEnv = Object.values(lambdas).some((fn) => {
+      const env = (
+        fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } }
+      ).Properties.Environment?.Variables
+      return env !== undefined && 'INTUIT_CLIENT_SECRET_ARN' in env
+    })
+    expect(hasSecretArnEnv).toBe(true)
+  })
+
+  test('does not pass plaintext Intuit client secret to Lambda env', () => {
+    const lambdas = template.findResources('AWS::Lambda::Function')
+    const hasPlaintextSecretEnv = Object.values(lambdas).some((fn) => {
+      const env = (
+        fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } }
+      ).Properties.Environment?.Variables
+      return env !== undefined && 'INTUIT_CLIENT_SECRET' in env
+    })
+    expect(hasPlaintextSecretEnv).toBe(false)
+  })
+
+  test('grants Secrets Manager read on the Intuit client secret', () => {
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: Match.arrayWith(['secretsmanager:GetSecretValue']),
+          }),
+        ]),
+      },
     })
   })
 })

@@ -3,10 +3,10 @@ import { DynamoDBDocumentClient, PutCommand, DeleteCommand, GetCommand } from '@
 import {
   TOKEN_TABLE,
   INTUIT_CLIENT_ID,
-  INTUIT_CLIENT_SECRET,
   INTUIT_TOKEN_URL,
   REALM_ID,
 } from '../constants'
+import { getClientSecret } from '../../shared/utils/getClientSecret'
 import { IntuitTokenResponse, OAuthTokens } from '../types'
 
 const client = new DynamoDBClient({})
@@ -44,7 +44,8 @@ export const handleCallback = async (code: string, realmId?: string, state?: str
       Key: { pk: `OAUTH_STATE#${state}` },
     }),
   )
-  const credentials = Buffer.from(`${INTUIT_CLIENT_ID}:${INTUIT_CLIENT_SECRET}`).toString('base64')
+  const clientSecret = await getClientSecret()
+  const credentials = Buffer.from(`${INTUIT_CLIENT_ID}:${clientSecret}`).toString('base64')
 
   const response = await fetch(INTUIT_TOKEN_URL, {
     method: 'POST',

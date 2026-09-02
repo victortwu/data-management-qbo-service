@@ -1,4 +1,5 @@
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { getClientSecret } from './getClientSecret'
 
 const INTUIT_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
@@ -36,7 +37,7 @@ const refreshTokens = async (
   currentRefreshToken: string,
 ) => {
   const clientId = process.env.INTUIT_CLIENT_ID!
-  const clientSecret = process.env.INTUIT_CLIENT_SECRET!
+  const clientSecret = await getClientSecret()
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
   const response = await fetch(INTUIT_TOKEN_URL, {
