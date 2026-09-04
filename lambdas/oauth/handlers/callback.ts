@@ -63,7 +63,8 @@ export const handleCallback = async (code: string, realmId?: string, state?: str
 
   if (!response.ok) {
     const error = await response.text()
-    console.error('Token exchange failed:', error)
+    const tid = response.headers.get('intuit_tid')
+    console.error(`Token exchange failed:${tid ? ` (intuit_tid: ${tid})` : ''}`, error)
     return {
       statusCode: 302,
       headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error` },

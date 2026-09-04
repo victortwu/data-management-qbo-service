@@ -102,10 +102,14 @@ export const handleAttachFile = async (
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error(`QBO attachment upload failed: ${response.status} ${errorText}`)
+    const tid = response.headers.get('intuit_tid')
+    console.error(
+      `QBO attachment upload failed: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${errorText}`,
+    )
     return respond(response.status === 401 ? 401 : 502, {
       error: `QBO attachment upload failed: ${response.status}`,
       detail: errorText,
+      intuitTid: tid ?? undefined,
     })
   }
 

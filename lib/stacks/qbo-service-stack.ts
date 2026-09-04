@@ -44,11 +44,18 @@ export class QboServiceStack extends cdk.Stack {
       `/${stageName}/datamgmt-qbo/intuit-client-id`,
     )
     // Intuit client secret lives in AWS Secrets Manager (KMS-encrypted), read at
-    // runtime via its ARN — never baked into the Lambda environment.
-    const intuitClientSecret = secretsmanager.Secret.fromSecretNameV2(
+    // runtime via its ARN — never baked into the Lambda environment. Referenced by
+    // its COMPLETE ARN (from SSM) so the IAM grant is an exact match — referencing
+    // by name yields a `-??????` wildcard suffix that does not reliably match the
+    // secret's random suffix, causing GetSecretValue AccessDenied at runtime.
+    const intuitClientSecretArn = ssm.StringParameter.valueForStringParameter(
+      this,
+      `/${stageName}/datamgmt-qbo/intuit-client-secret-arn`,
+    )
+    const intuitClientSecret = secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'IntuitClientSecret',
-      `${stageName}/datamgmt-qbo/intuit-client-secret`,
+      intuitClientSecretArn,
     )
     const qboRedirectUri = ssm.StringParameter.valueForStringParameter(
       this,

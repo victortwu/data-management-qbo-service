@@ -38,6 +38,12 @@ aws ssm put-parameter --name "/Beta/datamgmt-qbo/realm-id" --value "YOUR_REALM_I
 aws secretsmanager create-secret \
   --name "Beta/datamgmt-qbo/intuit-client-secret" \
   --secret-string "YOUR_CLIENT_SECRET"
+# Then store the secret's FULL ARN in SSM (the stack references it by complete ARN
+# so the IAM grant is an exact match — referencing by name yields a wildcard suffix
+# that does not reliably match, causing GetSecretValue AccessDenied at runtime):
+aws ssm put-parameter --name "/Beta/datamgmt-qbo/intuit-client-secret-arn" \
+  --value "$(aws secretsmanager describe-secret --secret-id 'Beta/datamgmt-qbo/intuit-client-secret' --query ARN --output text)" \
+  --type String
 # To rotate/update the value later:
 # aws secretsmanager put-secret-value \
 #   --secret-id "Beta/datamgmt-qbo/intuit-client-secret" --secret-string "NEW_VALUE"

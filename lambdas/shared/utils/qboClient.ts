@@ -55,7 +55,8 @@ const refreshTokens = async (
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`Token refresh failed: ${response.status} ${error}`)
+    const tid = response.headers.get('intuit_tid')
+    throw new Error(`Token refresh failed: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`)
   }
 
   const tokenData = (await response.json()) as IntuitTokenResponse
@@ -138,12 +139,16 @@ export const qboFetch = async (
   })
 
   if (response.status === 401) {
-    throw new Error('UNAUTHORIZED')
+    const tid = response.headers.get('intuit_tid')
+    throw new Error(`UNAUTHORIZED${tid ? ` (intuit_tid: ${tid})` : ''}`)
   }
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`QBO API error: ${response.status} ${error}`)
+    const tid = response.headers.get('intuit_tid')
+    throw new Error(
+      `QBO API error: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`,
+    )
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
