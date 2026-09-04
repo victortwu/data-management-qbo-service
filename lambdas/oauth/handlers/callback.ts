@@ -1,12 +1,13 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, PutCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import {
-  TOKEN_TABLE,
-  INTUIT_CLIENT_ID,
-  INTUIT_TOKEN_URL,
-  REALM_ID,
-} from '../constants'
+  DynamoDBDocumentClient,
+  PutCommand,
+  DeleteCommand,
+  GetCommand,
+} from '@aws-sdk/lib-dynamodb'
+import { TOKEN_TABLE, INTUIT_CLIENT_ID, INTUIT_TOKEN_URL, REALM_ID } from '../constants'
 import { getClientSecret } from '../../shared/utils/getClientSecret'
+import { logger } from '../../shared/utils/logger'
 import { IntuitTokenResponse, OAuthTokens } from '../types'
 
 const client = new DynamoDBClient({})
@@ -15,6 +16,11 @@ const ddb = DynamoDBDocumentClient.from(client)
 export const handleCallback = async (code: string, realmId?: string, state?: string) => {
   // CSRF validation: verify state parameter matches what we stored
   if (!state) {
+    logger.warn('OAuth callback CSRF check', {
+      operation: 'oauth_callback',
+      decision: 'missing_state',
+      errorClass: 'validation',
+    })
     return {
       statusCode: 302,
       headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error&reason=missing_state` },
@@ -30,6 +36,11 @@ export const handleCallback = async (code: string, realmId?: string, state?: str
   )
 
   if (!stateResult.Item) {
+    logger.warn('OAuth callback CSRF check', {
+      operation: 'oauth_callback',
+      decision: 'invalid_state',
+      errorClass: 'validation',
+    })
     return {
       statusCode: 302,
       headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error&reason=invalid_state` },
@@ -64,7 +75,14 @@ export const handleCallback = async (code: string, realmId?: string, state?: str
   if (!response.ok) {
     const error = await response.text()
     const tid = response.headers.get('intuit_tid')
-    console.error(`Token exchange failed:${tid ? ` (intuit_tid: ${tid})` : ''}`, error)
+    logger.error('Token exchange failed', {
+      operation: 'oauth_callback',
+      errorClass: 'qbo_api',
+      httpStatus: response.status,
+      intuitTid: tid ?? undefined,
+      errorName: 'TokenExchangeError',
+      errorMessage: error,
+    })
     return {
       statusCode: 302,
       headers: { Location: `${process.env.QBO_REDIRECT_URI!}?status=error` },

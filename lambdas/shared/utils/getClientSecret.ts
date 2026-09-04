@@ -1,4 +1,5 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+import { logger } from './logger'
 
 const client = new SecretsManagerClient({})
 
@@ -20,7 +21,22 @@ export const getClientSecret = async (): Promise<string> => {
     throw new Error('INTUIT_CLIENT_SECRET_ARN is not set')
   }
 
-  const result = await client.send(new GetSecretValueCommand({ SecretId: secretArn }))
+  let result
+  try {
+    result = await client.send(new GetSecretValueCommand({ SecretId: secretArn }))
+  } catch (error) {
+    const err = error as Error
+    // Distinguish config/permission failures (e.g. AccessDeniedException) from
+    // downstream errors — this is the silent-AccessDenied that was painful to debug.
+    logger.error('Failed to read Intuit client secret', {
+      operation: 'getClientSecret',
+      errorClass: 'config',
+      secretArn,
+      errorName: err.name,
+      errorMessage: err.message,
+    })
+    throw error
+  }
 
   if (!result.SecretString) {
     throw new Error('Intuit client secret has no SecretString value')

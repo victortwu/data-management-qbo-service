@@ -1,5 +1,6 @@
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { getClientSecret } from './getClientSecret'
+import { logger } from './logger'
 
 const INTUIT_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
@@ -56,7 +57,17 @@ const refreshTokens = async (
   if (!response.ok) {
     const error = await response.text()
     const tid = response.headers.get('intuit_tid')
-    throw new Error(`Token refresh failed: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`)
+    logger.error('Token refresh failed', {
+      operation: 'refreshTokens',
+      errorClass: 'qbo_api',
+      httpStatus: response.status,
+      intuitTid: tid ?? undefined,
+      errorName: 'TokenRefreshError',
+      errorMessage: error,
+    })
+    throw new Error(
+      `Token refresh failed: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`,
+    )
   }
 
   const tokenData = (await response.json()) as IntuitTokenResponse
@@ -140,12 +151,26 @@ export const qboFetch = async (
 
   if (response.status === 401) {
     const tid = response.headers.get('intuit_tid')
+    logger.warn('QBO API unauthorized', {
+      operation: 'qboFetch',
+      errorClass: 'qbo_api',
+      httpStatus: 401,
+      intuitTid: tid ?? undefined,
+    })
     throw new Error(`UNAUTHORIZED${tid ? ` (intuit_tid: ${tid})` : ''}`)
   }
 
   if (!response.ok) {
     const error = await response.text()
     const tid = response.headers.get('intuit_tid')
+    logger.error('QBO API error', {
+      operation: 'qboFetch',
+      errorClass: 'qbo_api',
+      httpStatus: response.status,
+      intuitTid: tid ?? undefined,
+      errorName: 'QboApiError',
+      errorMessage: error,
+    })
     throw new Error(
       `QBO API error: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`,
     )
