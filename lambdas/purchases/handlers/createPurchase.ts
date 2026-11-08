@@ -1,7 +1,9 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { getValidAccessToken, qboFetch } from '../../shared/utils/qboClient'
+import { escapeQboLiteral } from '../../shared/utils/escapeQboLiteral'
 import { respond } from '../../shared/utils/respond'
-import { TOKEN_TABLE, QBO_MINOR_VERSION } from '../constants'
+import { TOKEN_TABLE } from '../constants'
+import { QBO_MINOR_VERSION } from '../../shared/constants/qbo'
 import { CreatePurchaseRequest } from '../types'
 
 const REALM_ID = process.env.REALM_ID!
@@ -37,7 +39,9 @@ export const handleCreatePurchase = async (ddb: DynamoDBDocumentClient, body: st
   const accessToken = await getValidAccessToken(ddb, TOKEN_TABLE)
 
   // Check for duplicate
-  const query = encodeURIComponent(`select * from Purchase where DocNumber = '${docNumber}'`)
+  const query = encodeURIComponent(
+    `select * from Purchase where DocNumber = '${escapeQboLiteral(docNumber)}'`,
+  )
   const queryResult = await qboFetch(
     accessToken,
     REALM_ID,

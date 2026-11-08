@@ -44,10 +44,10 @@ describe('QboServiceStack', () => {
     })
   })
 
-  test('creates 4 Lambda functions', () => {
+  test('creates 5 Lambda functions', () => {
     const lambdas = template.findResources('AWS::Lambda::Function')
     const lambdaCount = Object.keys(lambdas).length
-    expect(lambdaCount).toBeGreaterThanOrEqual(4)
+    expect(lambdaCount).toBeGreaterThanOrEqual(5)
   })
 
   test('creates KMS key with auto-rotation', () => {
@@ -86,7 +86,19 @@ describe('QboServiceStack', () => {
     expect(routeKeys).toContain('POST /purchases')
     expect(routeKeys).toContain('GET /purchases/{docNumber}')
     expect(routeKeys).toContain('GET /vendors')
+    expect(routeKeys).toContain('GET /accounts')
     expect(routeKeys).toContain('GET /connection')
+  })
+
+  test('GET /accounts is JWT protected and served by the accounts Lambda', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'Beta-DataMgmt-QboAccounts',
+    })
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
+      RouteKey: 'GET /accounts',
+      AuthorizationType: 'JWT',
+      AuthorizerId: Match.anyValue(),
+    })
   })
 
   test('only the Intuit browser-flow routes are open; everything else has a JWT authorizer', () => {

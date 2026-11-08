@@ -122,6 +122,12 @@ export class QboServiceStack extends cdk.Stack {
       functionName: `${stageName}-DataMgmt-QboVendors`,
     })
 
+    const accountsLambda = new lambda.NodejsFunction(this, 'AccountsLambda', {
+      ...sharedLambdaProps,
+      entry: path.join(__dirname, '../../lambdas/accounts/index.ts'),
+      functionName: `${stageName}-DataMgmt-QboAccounts`,
+    })
+
     const connectionLambda = new lambda.NodejsFunction(this, 'ConnectionLambda', {
       ...sharedLambdaProps,
       entry: path.join(__dirname, '../../lambdas/connection/index.ts'),
@@ -129,7 +135,13 @@ export class QboServiceStack extends cdk.Stack {
     })
 
     // Grant DynamoDB + KMS access to all lambdas
-    const allLambdas = [oauthLambda, purchasesLambda, vendorsLambda, connectionLambda]
+    const allLambdas = [
+      oauthLambda,
+      purchasesLambda,
+      vendorsLambda,
+      accountsLambda,
+      connectionLambda,
+    ]
     for (const fn of allLambdas) {
       tokenTable.grantReadWriteData(fn)
       key.grantDecrypt(fn)
@@ -165,6 +177,10 @@ export class QboServiceStack extends cdk.Stack {
     const vendorsIntegration = new apigwv2Integrations.HttpLambdaIntegration(
       'VendorsIntegration',
       vendorsLambda,
+    )
+    const accountsIntegration = new apigwv2Integrations.HttpLambdaIntegration(
+      'AccountsIntegration',
+      accountsLambda,
     )
     const connectionIntegration = new apigwv2Integrations.HttpLambdaIntegration(
       'ConnectionIntegration',
@@ -225,6 +241,14 @@ export class QboServiceStack extends cdk.Stack {
       path: '/vendors',
       methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST],
       integration: vendorsIntegration,
+      authorizer: jwtAuthorizer,
+    })
+
+    // Accounts route (JWT protected)
+    httpApi.addRoutes({
+      path: '/accounts',
+      methods: [apigwv2.HttpMethod.GET],
+      integration: accountsIntegration,
       authorizer: jwtAuthorizer,
     })
 

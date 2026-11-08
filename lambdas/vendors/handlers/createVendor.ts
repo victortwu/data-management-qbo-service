@@ -1,7 +1,9 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { getValidAccessToken, qboFetch } from '../../shared/utils/qboClient'
+import { escapeQboLiteral } from '../../shared/utils/escapeQboLiteral'
 import { respond } from '../../shared/utils/respond'
-import { TOKEN_TABLE, QBO_MINOR_VERSION } from '../constants'
+import { TOKEN_TABLE } from '../constants'
+import { QBO_MINOR_VERSION } from '../../shared/constants/qbo'
 
 const REALM_ID = process.env.REALM_ID!
 
@@ -39,7 +41,7 @@ export const handleCreateVendor = async (ddb: DynamoDBDocumentClient, body: stri
 
   // Check for existing vendor with same display name
   const query = encodeURIComponent(
-    `SELECT * FROM Vendor WHERE DisplayName = '${displayName.replace(/'/g, "\\'")}'`,
+    `SELECT * FROM Vendor WHERE DisplayName = '${escapeQboLiteral(displayName)}'`,
   )
   const queryResult = await qboFetch(
     accessToken,

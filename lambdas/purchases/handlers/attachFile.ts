@@ -1,7 +1,8 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { getValidAccessToken } from '../../shared/utils/qboClient'
 import { respond } from '../../shared/utils/respond'
-import { TOKEN_TABLE, QBO_MINOR_VERSION } from '../constants'
+import { TOKEN_TABLE } from '../constants'
+import { QBO_MINOR_VERSION } from '../../shared/constants/qbo'
 
 const REALM_ID = process.env.REALM_ID!
 
