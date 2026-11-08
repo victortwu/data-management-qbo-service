@@ -62,7 +62,7 @@ describe('QboServiceStack', () => {
     })
   })
 
-  test('creates API routes for OAuth without authorizer', () => {
+  test('creates the unauthenticated Intuit browser-flow routes', () => {
     const routes = template.findResources('AWS::ApiGatewayV2::Route')
     const routeKeys = Object.values(routes).map(
       (r: Record<string, unknown>) =>
@@ -82,23 +82,25 @@ describe('QboServiceStack', () => {
     )
 
     expect(routeKeys).toContain('POST /auth/refresh')
+    expect(routeKeys).toContain('POST /auth/disconnect')
     expect(routeKeys).toContain('POST /purchases')
     expect(routeKeys).toContain('GET /purchases/{docNumber}')
     expect(routeKeys).toContain('GET /vendors')
     expect(routeKeys).toContain('GET /connection')
   })
 
-  test('OAuth routes have no authorizer', () => {
-    const routes = template.findResources('AWS::ApiGatewayV2::Route')
+  test('only the Intuit browser-flow routes are open; everything else has a JWT authorizer', () => {
+    const open = ['GET /auth/connect', 'GET /auth/callback', 'GET /auth/disconnect']
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route')).map(
+      (r) => (r as { Properties: Record<string, unknown> }).Properties,
+    )
 
-    for (const [, route] of Object.entries(routes)) {
-      const props = (route as { Properties: Record<string, unknown> }).Properties
-      if (
-        props.RouteKey === 'GET /auth/connect' ||
-        props.RouteKey === 'GET /auth/callback' ||
-        props.RouteKey === 'GET /auth/disconnect'
-      ) {
+    for (const props of routes) {
+      if (open.includes(props.RouteKey as string)) {
         expect(props.AuthorizationType).toBe('NONE')
+      } else {
+        expect([props.RouteKey, props.AuthorizationType]).toEqual([props.RouteKey, 'JWT'])
+        expect(props.AuthorizerId).toBeDefined()
       }
     }
   })
@@ -112,9 +114,8 @@ describe('QboServiceStack', () => {
   test('passes Intuit client secret ARN (not value) to Lambda env', () => {
     const lambdas = template.findResources('AWS::Lambda::Function')
     const hasSecretArnEnv = Object.values(lambdas).some((fn) => {
-      const env = (
-        fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } }
-      ).Properties.Environment?.Variables
+      const env = (fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } })
+        .Properties.Environment?.Variables
       return env !== undefined && 'INTUIT_CLIENT_SECRET_ARN' in env
     })
     expect(hasSecretArnEnv).toBe(true)
@@ -123,9 +124,8 @@ describe('QboServiceStack', () => {
   test('does not pass plaintext Intuit client secret to Lambda env', () => {
     const lambdas = template.findResources('AWS::Lambda::Function')
     const hasPlaintextSecretEnv = Object.values(lambdas).some((fn) => {
-      const env = (
-        fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } }
-      ).Properties.Environment?.Variables
+      const env = (fn as { Properties: { Environment?: { Variables?: Record<string, unknown> } } })
+        .Properties.Environment?.Variables
       return env !== undefined && 'INTUIT_CLIENT_SECRET' in env
     })
     expect(hasPlaintextSecretEnv).toBe(false)

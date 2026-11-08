@@ -182,19 +182,23 @@ export class QboServiceStack extends cdk.Stack {
       methods: [apigwv2.HttpMethod.GET],
       integration: oauthIntegration,
     })
+
+    // Intuit's registered Disconnect URL (browser GET). Acknowledges only; never deletes.
     httpApi.addRoutes({
       path: '/auth/disconnect',
       methods: [apigwv2.HttpMethod.GET],
       integration: oauthIntegration,
     })
 
-    // Auth refresh (JWT protected)
-    httpApi.addRoutes({
-      path: '/auth/refresh',
-      methods: [apigwv2.HttpMethod.POST],
-      integration: oauthIntegration,
-      authorizer: jwtAuthorizer,
-    })
+    // Auth refresh + disconnect (JWT protected; disconnect deletes the stored tokens)
+    for (const path of ['/auth/refresh', '/auth/disconnect']) {
+      httpApi.addRoutes({
+        path,
+        methods: [apigwv2.HttpMethod.POST],
+        integration: oauthIntegration,
+        authorizer: jwtAuthorizer,
+      })
+    }
 
     // Purchases routes (JWT protected)
     httpApi.addRoutes({

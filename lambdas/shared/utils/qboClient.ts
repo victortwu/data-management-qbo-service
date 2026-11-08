@@ -1,6 +1,7 @@
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { getClientSecret } from './getClientSecret'
 import { logger } from './logger'
+import { QboAuthExpiredError } from './qboAuthExpiredError'
 
 const INTUIT_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
@@ -65,6 +66,10 @@ const refreshTokens = async (
       errorName: 'TokenRefreshError',
       errorMessage: error,
     })
+    // 400/401 = Intuit rejected the refresh token (invalid_grant / expired): needs reconnect.
+    if (response.status === 400 || response.status === 401) {
+      throw new QboAuthExpiredError(tid ?? undefined)
+    }
     throw new Error(
       `Token refresh failed: ${response.status}${tid ? ` (intuit_tid: ${tid})` : ''} ${error}`,
     )
@@ -105,7 +110,7 @@ export const getValidAccessToken = async (
   const tokens = await getStoredTokens(ddb, tableName)
 
   if (!tokens) {
-    throw new Error('No OAuth tokens found. Please connect to QuickBooks first.')
+    throw new QboAuthExpiredError()
   }
 
   const now = new Date()
@@ -157,7 +162,7 @@ export const qboFetch = async (
       httpStatus: 401,
       intuitTid: tid ?? undefined,
     })
-    throw new Error(`UNAUTHORIZED${tid ? ` (intuit_tid: ${tid})` : ''}`)
+    throw new QboAuthExpiredError(tid ?? undefined)
   }
 
   if (!response.ok) {

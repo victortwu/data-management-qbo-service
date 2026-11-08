@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2WithJWTAuthorizer } from 'aws-lambda'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { respond } from '../shared/utils/respond'
+import { respondWithError } from '../shared/utils/respondWithError'
 import { TOKEN_TABLE } from './constants'
 import { ConnectionStatus } from './types'
 
@@ -57,8 +58,6 @@ export const handler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async () => {
 
     return respond(200, connectionStatus)
   } catch (error) {
-    console.error('Connection handler error:', error)
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return respond(500, { error: message })
+    return respondWithError('connection', error)
   }
 }

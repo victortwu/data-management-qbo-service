@@ -6,6 +6,7 @@ import { handleCallback } from './handlers/callback'
 import { handleDisconnect } from './handlers/disconnect'
 import { getValidAccessToken } from '../shared/utils/qboClient'
 import { respond } from '../shared/utils/respond'
+import { respondWithError } from '../shared/utils/respondWithError'
 import { logger } from '../shared/utils/logger'
 import { TOKEN_TABLE } from './constants'
 
@@ -20,7 +21,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // GET /auth/connect
     if (method === 'GET' && rawPath.includes('/connect')) {
       logger.info('OAuth branch', { operation: 'oauth', branch: 'connect' })
-      return handleConnect()
+      return await handleConnect()
     }
 
     // GET /auth/callback
@@ -39,7 +40,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         return respond(400, { error: 'Missing authorization code' })
       }
 
-      return handleCallback(code, realmId, state)
+      return await handleCallback(code, realmId, state)
     }
 
     // POST /auth/refresh
@@ -52,21 +53,21 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       })
     }
 
-    // GET /auth/disconnect
-    if (method === 'GET' && rawPath.includes('/disconnect')) {
+    // GET /auth/disconnect — Intuit's registered Disconnect URL. Unauthenticated, so it must
+    // never mutate state; Intuit has already revoked the tokens on its side.
+    if (method === 'GET' && rawPath === '/auth/disconnect') {
+      logger.info('OAuth branch', { operation: 'oauth', branch: 'disconnect-ack' })
+      return respond(200, { message: 'Disconnect acknowledged' })
+    }
+
+    // POST /auth/disconnect (JWT) — deletes the stored tokens
+    if (method === 'POST' && rawPath === '/auth/disconnect') {
       logger.info('OAuth branch', { operation: 'oauth', branch: 'disconnect' })
-      return handleDisconnect()
+      return await handleDisconnect()
     }
 
     return respond(404, { error: 'Route not found' })
   } catch (error) {
-    const err = error as Error
-    logger.error('OAuth handler error', {
-      operation: 'oauth',
-      errorName: err.name,
-      errorMessage: err.message,
-    })
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return respond(500, { error: message })
+    return respondWithError('oauth', error)
   }
 }
